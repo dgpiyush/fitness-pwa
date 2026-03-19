@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useStore, type DayRecord } from '../store/useStore';
 import { 
   Dumbbell, Moon, Crosshair, Settings, ChevronLeft, 
-  ChevronRight, Plus, Trash2, X, Activity, Flame, Cloud, RefreshCw
+  ChevronRight, Plus, Trash2, X, Activity, Flame, Cloud, RefreshCw, Download
 } from 'lucide-react';
 import { useGoogleDrive } from '../hooks/useGoogleDrive';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { format, getDaysInMonth, startOfMonth, addDays, isSameDay } from 'date-fns';
 import { cn } from '../lib/utils';
 
@@ -18,6 +19,7 @@ export function Dashboard() {
   const [newCustomKeyType, setNewCustomKeyType] = useState<'boolean' | 'number' | 'text'>('boolean');
   
   const { uploadToDrive, downloadFromDrive, connect, disconnect, isSyncing, googleEmail } = useGoogleDrive();
+  const { isInstallable, promptInstall } = usePWAInstall();
 
   const daysInMonth = getDaysInMonth(currentDate);
   const monthStart = startOfMonth(currentDate);
@@ -55,12 +57,23 @@ export function Dashboard() {
             <h1 className="text-2xl font-bold tracking-tight text-primary">The Matrix</h1>
             <p className="text-muted-foreground text-sm font-medium">Operator: {profile?.name}</p>
           </div>
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2.5 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <Settings size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {isInstallable && (
+              <button 
+                onClick={promptInstall}
+                className="p-2.5 rounded-full bg-primary/20 hover:bg-primary/30 text-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 animate-pulse-slow"
+                title="Install App"
+              >
+                <Download size={20} />
+              </button>
+            )}
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2.5 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-3 text-center">
@@ -296,6 +309,19 @@ export function Dashboard() {
             <h2 className="text-2xl font-bold mb-6">Settings</h2>
             
             <div className="space-y-6">
+              {isInstallable && (
+                <div className="bg-primary/10 border border-primary/30 p-4 rounded-xl">
+                  <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2"><Download size={16}/> Matrix App is Ready</h3>
+                  <p className="text-xs text-muted-foreground mb-3">Install this application directly to your home screen for the full 100% offline standalone experience.</p>
+                  <button 
+                    onClick={promptInstall}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    Install to Home Screen
+                  </button>
+                </div>
+              )}
+              
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Custom Tracking Keys</h3>
                 <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
