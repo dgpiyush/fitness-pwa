@@ -5,10 +5,10 @@ export function useGeminiAgent() {
   const [isTyping, setIsTyping] = useState(false);
   const { geminiKey, geminiModel, chats, addChat, profile, goals, targets, history, updateDayRecord, customKeys } = useStore();
 
-  const sendMessage = async (message: string, selectedDate: Date) => {
+  const sendMessage = async (message: string, selectedDate: Date, imageFile?: File | null) => {
     if (!geminiKey) return;
     
-    addChat({ role: 'user', content: message });
+    addChat({ role: 'user', content: imageFile ? `📸 [Image Uploaded] ${message}` : message });
     setIsTyping(true);
 
     const dateStr = selectedDate.toISOString().split('T')[0];
@@ -48,7 +48,28 @@ export function useGeminiAgent() {
         parts: [{ text: c.content }]
       }));
       
-      apiMessages.push({ role: 'user', parts: [{ text: message }] });
+      let userParts: any[] = [{ text: message || "Analyze this image." }];
+      
+      if (imageFile) {
+        const base64Data = await new Promise<string>((resolve, reject) => {
+           const reader = new FileReader();
+           reader.onload = () => resolve((reader.result as string).split(',')[1]);
+           reader.onerror = reject;
+           reader.readAsDataURL(imageFile);
+        });
+
+        userParts = [
+          {
+            inline_data: {
+              mime_type: imageFile.type,
+              data: base64Data
+            }
+          },
+          { text: message || "Analyze this food and estimate its calories and protein. Inform me if I should eat this based on my daily targets and remaining calories." }
+        ];
+      }
+
+      apiMessages.push({ role: 'user', parts: userParts });
 
       const payload = {
         systemInstruction: { parts: [{ text: systemPrompt }] },
