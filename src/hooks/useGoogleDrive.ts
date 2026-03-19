@@ -104,6 +104,9 @@ export function useGoogleDrive() {
         targets: storeState.targets,
         history: storeState.history,
         customKeys: storeState.customKeys,
+        geminiKey: storeState.geminiKey,
+        geminiModel: storeState.geminiModel,
+        chats: storeState.chats,
       });
 
       const blob = new Blob([backupData], { type: 'application/json' });
@@ -165,6 +168,9 @@ export function useGoogleDrive() {
         targets: data.targets,
         history: data.history || {},
         customKeys: data.customKeys || [],
+        geminiKey: data.geminiKey || null,
+        geminiModel: data.geminiModel || 'gemini-1.5-flash',
+        chats: data.chats || [],
         googleEmail: googleEmail, // preserve current auth
         googleToken: googleToken,
         googleTokenExpiry: googleTokenExpiry

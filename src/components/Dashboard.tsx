@@ -2,19 +2,21 @@ import { useState } from 'react';
 import { useStore, type DayRecord } from '../store/useStore';
 import { 
   Dumbbell, Moon, Crosshair, Settings, ChevronLeft, 
-  ChevronRight, Plus, Trash2, X, Activity, Flame, Cloud, RefreshCw, Download
+  ChevronRight, Plus, Trash2, X, Activity, Flame, Cloud, RefreshCw, Download, Sparkles
 } from 'lucide-react';
 import { useGoogleDrive } from '../hooks/useGoogleDrive';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { AIAssistant } from './AIAssistant';
 import { format, getDaysInMonth, startOfMonth, addDays, isSameDay } from 'date-fns';
 import { cn } from '../lib/utils';
 
 export function Dashboard() {
-  const { profile, targets, history, updateDayRecord, customKeys, addCustomKey, removeCustomKey } = useStore();
+  const { profile, goals, targets, history, updateDayRecord, customKeys, addCustomKey, removeCustomKey, updateProfile, updateGoals } = useStore();
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAIOpen, setIsAIOpen] = useState(false);
   const [newCustomKeyName, setNewCustomKeyName] = useState('');
   const [newCustomKeyType, setNewCustomKeyType] = useState<'boolean' | 'number' | 'text'>('boolean');
   
@@ -77,21 +79,40 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-4 gap-3 text-center">
-          <div className="bg-muted/40 p-3 rounded-2xl flex flex-col items-center justify-center border border-border/50">
+          <div className="bg-muted/40 p-3 rounded-2xl flex flex-col items-center justify-center border border-border/50 relative group cursor-help">
             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">BMI</span>
             <span className="font-mono text-lg font-bold text-foreground">{bmi}</span>
+            <div className="absolute top-full left-0 mt-3 w-48 bg-popover text-popover-foreground text-xs p-3 rounded-xl border border-border shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none">
+              <strong className="text-foreground">Body Mass Index</strong><br/>
+              A basic height-to-weight ratio to gauge general health categories.
+            </div>
           </div>
-          <div className="bg-muted/40 p-3 rounded-2xl flex flex-col items-center justify-center border border-border/50" title="Total Daily Energy Expenditure">
+
+          <div className="bg-muted/40 p-3 rounded-2xl flex flex-col items-center justify-center border border-border/50 relative group cursor-help" title="Total Daily Energy Expenditure">
             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1 flex items-center gap-1"><Activity size={10}/> TDEE</span>
             <span className="font-mono text-lg font-bold text-foreground">{targets?.tdee}</span>
+            <div className="absolute top-full left-0 mt-3 w-48 bg-popover text-popover-foreground text-xs p-3 rounded-xl border border-border shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none">
+              <strong className="text-foreground">Maintenance Calories</strong><br/>
+              The exact calories you burn in a day. Eat this amount to maintain your weight!
+            </div>
           </div>
-          <div className="bg-primary/10 p-3 rounded-2xl flex flex-col items-center justify-center border border-primary/20" title="Target Daily Calories">
+
+          <div className="bg-primary/10 p-3 rounded-2xl flex flex-col items-center justify-center border border-primary/20 relative group cursor-help" title="Target Daily Calories">
             <span className="text-[10px] uppercase font-bold text-primary tracking-wider mb-1 flex items-center gap-1"><Flame size={10}/> TARGET</span>
             <span className="font-mono text-lg font-bold text-primary">{targets?.dailyCalories}</span>
+            <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-3 w-48 bg-popover text-popover-foreground text-xs p-3 rounded-xl border border-primary/50 shadow-2xl shadow-primary/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none">
+              <strong className="text-primary">Deficit Caloric Goal</strong><br/>
+              Your TDEE mathematically reduced. Eat this to hit your exact weight loss schedule!
+            </div>
           </div>
-          <div className="bg-secondary/20 p-3 rounded-2xl flex flex-col items-center justify-center border border-secondary/30">
-            <span className="text-[10px] uppercase font-bold text-secondary-foreground tracking-wider mb-1">Pro</span>
+
+          <div className="bg-secondary/20 p-3 rounded-2xl flex flex-col items-center justify-center border border-secondary/30 relative group cursor-help">
+            <span className="text-[10px] uppercase font-bold text-secondary-foreground tracking-wider mb-1">PRO</span>
             <span className="font-mono text-lg font-bold text-secondary-foreground">{targets?.protein}g</span>
+            <div className="absolute top-full right-0 mt-3 w-48 bg-popover text-popover-foreground text-xs p-3 rounded-xl border border-secondary/50 shadow-2xl shadow-secondary/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left pointer-events-none">
+              <strong className="text-secondary-foreground">Protein Target</strong><br/>
+              (1.8g per kg of bodyweight). Crucial macros to prevent muscle loss while losing weight.
+            </div>
           </div>
         </div>
       </header>
@@ -174,6 +195,22 @@ export function Dashboard() {
                     <Flame size={14}/> Core Telemetry
                   </h4>
                   
+                  <div className="bg-muted/30 p-4 rounded-xl border border-border">
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">PROGRESSIVE WEIGHT LOG (KG)</label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="number"
+                        className="bg-transparent text-2xl font-mono font-bold w-24 focus:outline-none focus:ring-0 p-0 text-foreground placeholder:text-muted-foreground/30"
+                        placeholder="0"
+                        value={getDayData(selectedDate)?.weight || ''}
+                        onChange={(e) => handleUpdateRecord(selectedDate, { weight: Number(e.target.value) })}
+                      />
+                      <span className="text-xs text-muted-foreground italic flex-1 flex items-center leading-tight">
+                        (Updates your global Target/TDEE instantly)
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="bg-muted/30 p-4 rounded-xl border border-border">
                     <label className="text-xs font-bold text-muted-foreground mb-1 block">CALORIES IN</label>
                     <div className="flex items-center gap-3">
@@ -302,11 +339,13 @@ export function Dashboard() {
       {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl relative">
-            <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 p-2 rounded-full bg-muted hover:bg-muted/80 text-foreground">
-              <X size={20} />
-            </button>
-            <h2 className="text-2xl font-bold mb-6">Settings</h2>
+          <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto overscroll-contain bg-card border border-border rounded-2xl p-6 shadow-2xl relative scrollbar-hide flex flex-col">
+            <div className="sticky top-0 bg-card z-10 pb-4 mb-4 border-b border-border/50 flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Settings</h2>
+              <button onClick={() => setIsSettingsOpen(false)} className="p-2 rounded-full bg-muted hover:bg-muted/80 text-foreground">
+                <X size={20} />
+              </button>
+            </div>
             
             <div className="space-y-6">
               {isInstallable && (
@@ -321,6 +360,42 @@ export function Dashboard() {
                   </button>
                 </div>
               )}
+
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Operator Profile</h3>
+                <div className="bg-muted/30 p-4 rounded-xl border border-border space-y-3">
+                  <div className="flex justify-between items-center gap-4">
+                     <label className="text-xs font-bold text-muted-foreground">BASE WEIGHT (KG)</label>
+                     <input type="number" 
+                       value={profile?.weight || ''} 
+                       onChange={e => updateProfile({ weight: Number(e.target.value) })}
+                       className="bg-transparent text-right font-mono font-bold w-1/3 focus:outline-none border-b border-border/50 text-foreground"
+                     />
+                  </div>
+                  <div className="flex justify-between items-center gap-4">
+                     <label className="text-xs font-bold text-muted-foreground">ACTIVITY LEVEL</label>
+                     <select 
+                       value={profile?.activityLevel || 'moderate'} 
+                       onChange={e => updateProfile({ activityLevel: e.target.value as any })}
+                       className="bg-transparent text-right font-semibold font-mono w-1/2 focus:outline-none border-b border-border/50 text-foreground appearance-none"
+                     >
+                        <option className="bg-background text-foreground" value="sedentary">Sedentary</option>
+                        <option className="bg-background text-foreground" value="light">Light</option>
+                        <option className="bg-background text-foreground" value="moderate">Moderate</option>
+                        <option className="bg-background text-foreground" value="active">Active</option>
+                        <option className="bg-background text-foreground" value="very-active">Very Active</option>
+                     </select>
+                  </div>
+                  <div className="flex justify-between items-center gap-4">
+                     <label className="text-xs font-bold text-muted-foreground">LOSS GOAL (KG)</label>
+                     <input type="number" 
+                       value={goals?.weightLossGoal || ''} 
+                       onChange={e => updateGoals({ weightLossGoal: Number(e.target.value) })}
+                       className="bg-transparent text-right font-mono font-bold w-1/3 focus:outline-none border-b border-border/50 text-foreground"
+                     />
+                  </div>
+                </div>
+              </div>
               
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Custom Tracking Keys</h3>
@@ -434,6 +509,24 @@ export function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Floating Matrix AI Assistant Button (Only visible if linked to Drive for Secure Key Storage) */}
+      {googleEmail && (
+        <button 
+          onClick={() => setIsAIOpen(true)}
+          className="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full p-4 shadow-[0_0_20px_rgba(79,70,229,0.5)] transition-all hover:scale-105 group border border-indigo-400"
+        >
+          <Sparkles size={24} className="group-hover:animate-pulse" />
+        </button>
+      )}
+
+      {/* Intelligent Agent Modal */}
+      <AIAssistant 
+        isOpen={isAIOpen} 
+        onClose={() => setIsAIOpen(false)} 
+        selectedDate={selectedDate || currentDate} 
+      />
+
     </div>
   );
 }

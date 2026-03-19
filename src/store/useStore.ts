@@ -22,6 +22,7 @@ export interface DayRecord {
   calories: number;
   protein: number;
   steps: number;
+  weight?: number; // Tracks weight over time progressively
   workout: boolean;
   sleep: boolean;
   core: boolean;
@@ -42,13 +43,21 @@ interface AppState {
   googleEmail: string | null;
   googleToken: string | null;
   googleTokenExpiry: number;
+  geminiKey: string | null;
+  geminiModel: string;
+  chats: Array<{ role: 'user' | 'model'; content: string }>;
   
-  // Actions
   completeOnboarding: (profile: UserProfile, goals: UserGoals) => void;
+  updateProfile: (profileUpdates: Partial<UserProfile>) => void;
+  updateGoals: (goalUpdates: Partial<UserGoals>) => void;
   updateDayRecord: (dateStr: string, updates: Partial<DayRecord>) => void;
   addCustomKey: (name: string, type: 'boolean' | 'number' | 'text') => void;
   removeCustomKey: (id: string) => void;
   setGoogleAuth: (email: string | null, token: string | null, expiry: number) => void;
+  setGeminiKey: (key: string | null) => void;
+  setGeminiModel: (model: string) => void;
+  addChat: (chat: { role: 'user' | 'model'; content: string }) => void;
+  clearChats: () => void;
   resetApp: () => void;
 }
 
@@ -95,11 +104,28 @@ export const useStore = create<AppState>()(
       googleEmail: null,
       googleToken: null,
       googleTokenExpiry: 0,
+      geminiKey: null,
+      geminiModel: 'gemini-1.5-flash',
+      chats: [],
 
       completeOnboarding: (profile, goals) => {
         const targets = calculateTargets(profile, goals);
         set({ isOnboarded: true, profile, goals, targets });
       },
+
+      updateProfile: (updates) => set((state) => {
+        if (!state.profile || !state.goals) return state;
+        const newProfile = { ...state.profile, ...updates };
+        const newTargets = calculateTargets(newProfile, state.goals);
+        return { profile: newProfile, targets: newTargets };
+      }),
+
+      updateGoals: (updates) => set((state) => {
+        if (!state.profile || !state.goals) return state;
+        const newGoals = { ...state.goals, ...updates };
+        const newTargets = calculateTargets(state.profile, newGoals);
+        return { goals: newGoals, targets: newTargets };
+      }),
 
       updateDayRecord: (dateStr, updates) => set((state) => {
         const currentData = state.history[dateStr] || {
@@ -117,12 +143,23 @@ export const useStore = create<AppState>()(
            customFields = { ...currentData.customFields, ...updates.customFields };
         }
         
-        return {
+        const nextState: any = {
           history: {
             ...state.history,
             [dateStr]: { ...currentData, ...updates, customFields }
           }
         };
+
+        // Automatic Global Progressive Syncing:
+        // If they log a new weight on a specific day, instantly auto-update their global profile and targets!
+        if (updates.weight !== undefined && state.profile && state.goals) {
+          const newProfile = { ...state.profile, weight: updates.weight };
+          const newTargets = calculateTargets(newProfile, state.goals);
+          nextState.profile = newProfile;
+          nextState.targets = newTargets;
+        }
+        
+        return nextState;
       }),
 
       addCustomKey: (name, type) => set((state) => ({
@@ -139,6 +176,11 @@ export const useStore = create<AppState>()(
         googleTokenExpiry: expiry 
       })),
       
+      setGeminiKey: (key) => set({ geminiKey: key }),
+      setGeminiModel: (model) => set({ geminiModel: model }),
+      addChat: (chat) => set((state) => ({ chats: [...state.chats, chat] })),
+      clearChats: () => set({ chats: [] }),
+      
       resetApp: () => set({
         isOnboarded: false,
         profile: null,
@@ -148,7 +190,10 @@ export const useStore = create<AppState>()(
         customKeys: [],
         googleEmail: null,
         googleToken: null,
-        googleTokenExpiry: 0
+        googleTokenExpiry: 0,
+        geminiKey: null,
+        geminiModel: 'gemini-1.5-flash',
+        chats: []
       })
     }),
     {
