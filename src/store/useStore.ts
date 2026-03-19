@@ -39,12 +39,16 @@ interface AppState {
   } | null;
   history: Record<string, DayRecord>; // ISO date string "YYYY-MM-DD" as key
   customKeys: Array<{ id: string; name: string; type: 'boolean' | 'number' | 'text' }>;
+  googleEmail: string | null;
+  googleToken: string | null;
+  googleTokenExpiry: number;
   
   // Actions
   completeOnboarding: (profile: UserProfile, goals: UserGoals) => void;
   updateDayRecord: (dateStr: string, updates: Partial<DayRecord>) => void;
   addCustomKey: (name: string, type: 'boolean' | 'number' | 'text') => void;
   removeCustomKey: (id: string) => void;
+  setGoogleAuth: (email: string | null, token: string | null, expiry: number) => void;
   resetApp: () => void;
 }
 
@@ -88,6 +92,9 @@ export const useStore = create<AppState>()(
       targets: null,
       history: {},
       customKeys: [],
+      googleEmail: null,
+      googleToken: null,
+      googleTokenExpiry: 0,
 
       completeOnboarding: (profile, goals) => {
         const targets = calculateTargets(profile, goals);
@@ -126,13 +133,22 @@ export const useStore = create<AppState>()(
         customKeys: state.customKeys.filter(k => k.id !== id)
       })),
       
+      setGoogleAuth: (email, token, expiry) => set((state) => ({ 
+        googleEmail: email !== undefined ? email : state.googleEmail,
+        googleToken: token, 
+        googleTokenExpiry: expiry 
+      })),
+      
       resetApp: () => set({
         isOnboarded: false,
         profile: null,
         goals: null,
         targets: null,
         history: {},
-        customKeys: []
+        customKeys: [],
+        googleEmail: null,
+        googleToken: null,
+        googleTokenExpiry: 0
       })
     }),
     {

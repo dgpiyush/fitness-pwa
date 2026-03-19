@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useStore, type DayRecord } from '../store/useStore';
 import { 
   Dumbbell, Moon, Crosshair, Settings, ChevronLeft, 
-  ChevronRight, Plus, Trash2, X, Activity, Flame
+  ChevronRight, Plus, Trash2, X, Activity, Flame, Cloud, RefreshCw
 } from 'lucide-react';
+import { useGoogleDrive } from '../hooks/useGoogleDrive';
 import { format, getDaysInMonth, startOfMonth, addDays, isSameDay } from 'date-fns';
 import { cn } from '../lib/utils';
 
@@ -15,6 +16,8 @@ export function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [newCustomKeyName, setNewCustomKeyName] = useState('');
   const [newCustomKeyType, setNewCustomKeyType] = useState<'boolean' | 'number' | 'text'>('boolean');
+  
+  const { uploadToDrive, downloadFromDrive, connect, disconnect, isSyncing, googleEmail } = useGoogleDrive();
 
   const daysInMonth = getDaysInMonth(currentDate);
   const monthStart = startOfMonth(currentDate);
@@ -342,14 +345,61 @@ export function Dashboard() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border">
+              <div className="pt-4 border-t border-border space-y-3">
+                 <div className="bg-muted/40 p-4 rounded-xl border border-border border-dashed">
+                    <h4 className="text-sm font-semibold mb-3 flex items-center justify-between">
+                       Cloud Connect
+                       {googleEmail ? (
+                         <span className="text-xs text-primary font-mono">{googleEmail}</span>
+                       ) : (
+                         <span className="text-xs text-muted-foreground uppercase">Not Linked</span>
+                       )}
+                    </h4>
+                    
+                    {!googleEmail ? (
+                      <button 
+                        onClick={connect}
+                        disabled={isSyncing}
+                        className="w-full bg-primary/10 border border-primary/50 text-primary hover:bg-primary/20 py-3 rounded-xl font-bold transition-colors uppercase text-sm flex items-center justify-center gap-2"
+                      >
+                        {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <Cloud size={16} />}
+                        Link Google Drive
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                         <button 
+                           onClick={uploadToDrive}
+                           disabled={isSyncing}
+                           className="w-full bg-indigo-500/10 border border-indigo-500/50 text-indigo-500 hover:bg-indigo-500/20 py-3 rounded-xl font-bold transition-colors uppercase text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                         >
+                           {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <Cloud size={16} />}
+                           Secure Backup to Drive
+                         </button>
+                         <button 
+                           onClick={downloadFromDrive}
+                           disabled={isSyncing}
+                           className="w-full bg-muted/30 border border-border text-foreground hover:bg-muted/50 py-3 rounded-xl font-bold transition-colors uppercase text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                         >
+                           {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <RefreshCw size={16} />}
+                           Force Restore from Drive
+                         </button>
+                         <button 
+                           onClick={disconnect}
+                           className="w-full text-muted-foreground hover:text-foreground text-xs font-semibold pt-1 transition-colors flex items-center justify-center gap-1"
+                         >
+                           <X size={12}/> Disconnect Account
+                         </button>
+                      </div>
+                    )}
+                 </div>
+
                  <button 
                    onClick={() => {
                      if(window.confirm("Initialize complete system reset? All local data will be permanently wiped.")) {
                        useStore.getState().resetApp();
                      }
                    }}
-                   className="w-full border border-destructive/50 text-destructive hover:bg-destructive/10 py-3 rounded-xl font-bold transition-colors uppercase text-sm"
+                   className="w-full border border-destructive/50 text-destructive hover:bg-destructive/10 py-3 rounded-xl font-bold transition-colors uppercase text-sm mt-6"
                  >
                    Factory Reset System
                  </button>

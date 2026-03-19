@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { type UserProfile, type UserGoals, useStore } from '../store/useStore';
-import { Activity, User, Target, ChevronRight, Check } from 'lucide-react';
+import { Activity, User, Target, ChevronRight, Check, Cloud, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useGoogleDrive } from '../hooks/useGoogleDrive';
 
 export function Onboarding() {
   const completeOnboarding = useStore(state => state.completeOnboarding);
@@ -15,6 +16,8 @@ export function Onboarding() {
     weightLossGoal: 5,
     timelineWeeks: 10
   });
+
+  const { downloadFromDrive, connect, isSyncing, googleEmail } = useGoogleDrive();
 
   const handleNext = () => setStep(s => s + 1);
   
@@ -107,11 +110,36 @@ export function Onboarding() {
                 
                 <button 
                   onClick={handleNext}
-                  disabled={!profile.name || !profile.age}
+                  disabled={!profile.name || !profile.age || isSyncing}
                   className="w-full mt-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue <ChevronRight size={18} />
                 </button>
+                
+                <div className="pt-2">
+                  {!googleEmail ? (
+                    <button
+                      onClick={connect}
+                      disabled={isSyncing}
+                      className="w-full bg-indigo-500/10 border border-indigo-500/50 text-indigo-500 hover:bg-indigo-500/20 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <Cloud size={16} />}
+                      Link Drive & Restore Profile
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-center text-muted-foreground">Linked: <span className="font-mono text-primary">{googleEmail}</span></p>
+                      <button
+                        onClick={downloadFromDrive}
+                        disabled={isSyncing}
+                        className="w-full bg-indigo-500 border border-indigo-400 text-white hover:bg-indigo-600 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-all text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <RefreshCw size={16} />}
+                        Pull Data from Drive
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
